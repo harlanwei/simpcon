@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/simpcon.dir/main.c.o CMakeFiles/simpcon.dir/lib/id.c.o CMakeFiles/simpcon.dir/lib/fork.c.o  -o simpcon 

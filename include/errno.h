@@ -1,0 +1,7 @@
+#ifndef SIMPCON_ERRNO_H
+#define SIMPCON_ERRNO_H
+
+#define ERR_FORK_FAILED -2
+#define ERR_ID_ALLOCATION_FAILED -3
+
+#endif //SIMPCON_ERRNO_H
