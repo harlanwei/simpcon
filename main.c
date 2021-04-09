@@ -4,8 +4,8 @@
 #include "include/fork.h"
 
 int main() {
-    char *args[] = {"bash", NULL};
-    create("/usr/bin/bash", args);
+    char *args[] = {"sh", NULL};
+    create(true, "/usr/bin/sh", args);
     wait(NULL);
     return 0;
 }
