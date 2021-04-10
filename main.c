@@ -5,7 +5,7 @@
 
 int main() {
     char *args[] = {"sh", NULL};
-    create(true, "/usr/bin/sh", args);
+    create("/bin/sh", args);
     wait(NULL);
     return 0;
 }

@@ -12,9 +12,17 @@
 #include "../include/errno.h"
 #include "../include/fork.h"
 #include "../include/id.h"
+#include "../include/sys_wrap.h"
 
 #define BUF_SIZE 128
 #define INIT_STACK_SIZE 4096
+
+struct init_args {
+    char *path;
+    char **args;
+    uid_t euid;
+    uid_t egid;
+};
 
 static int init_stack[INIT_STACK_SIZE];
 
@@ -32,61 +40,38 @@ static void chuser(uid_t from_uid, uid_t to_uid, uid_t from_gid, uid_t to_gid) {
     int fd;
     char *buf = malloc(BUF_SIZE);
 
-    if ((fd = open("/proc/self/setgroups", O_WRONLY)) == -1) {
-        perror("open");
-        exit(1);
-    }
-    if (write(fd, "deny", 4) == -1) {
-        perror("write");
-        exit(1);
-    }
+    fd = s_open("/proc/self/setgroups", O_WRONLY, true);
+    s_write(fd, "deny", 4, true);
     close(fd);
 
     sprintf(buf, "%d %d 1\n", from_uid, to_uid);
-    if ((fd = open("/proc/self/uid_map", O_WRONLY)) == -1) {
-        perror("open");
-        exit(1);
-    }
-    if (write(fd, buf, strlen(buf)) == -1) {
-        perror("write");
-        exit(1);
-    }
+    fd = s_open("/proc/self/uid_map", O_WRONLY, true);
+    s_write(fd, buf, strlen(buf), true);
     close(fd);
 
     sprintf(buf, "%d %d 1\n", from_gid, to_gid);
-    if ((fd = open("/proc/self/gid_map", O_WRONLY)) == -1) {
-        perror("open");
-        exit(1);
-    }
-    if (write(fd, buf, strlen(buf)) == -1) {
-        perror("write");
-        exit(1);
-    }
+    fd = s_open("/proc/self/gid_map", O_WRONLY, true);
+    s_write(fd, buf, strlen(buf), true);
     close(fd);
 
     free(buf);
 }
 
-struct init_args {
-    char *path;
-    char **args;
-    uid_t euid;
-    uid_t egid;
-};
-
 static int init_container(void *args) {
-    // unmount all
-    // chroot (bind mount/pivot root dance)
-
     struct init_args *_args = (struct init_args *) args;
+    mount("/home/vian/simpcon/fkroot", "/home/vian/simpcon/fkroot", NULL, MS_BIND, NULL);
+    chdir("/home/vian/simpcon/fkroot");
+    s_pivot_root("/home/vian/simpcon/fkroot", "/home/vian/simpcon/fkroot/tmp/oldroot", true);
+    s_umount("/tmp/oldroot", MNT_DETACH, true);
     mount("/proc", "/proc", "proc", 0, NULL);
     chuser(0, _args->euid, 0, _args->egid);
+    setenv("PS1", "\\u, \\w: ", true);
     spawn(_args->path, _args->args);
 
     return 0;
 }
 
-int create(bool interactive, char *path, char *args[]) {
+int create(char *path, char *args[]) {
     int id, namespaces;
     pid_t child_pid;
     struct init_args init_container_args = {
@@ -112,8 +97,6 @@ int create(bool interactive, char *path, char *args[]) {
         exit(1);
     }
 
-    printf("Child pid: %d\n", child_pid);
     waitpid(child_pid, NULL, 0);
-
     return child_pid;
 }

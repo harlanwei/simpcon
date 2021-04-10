@@ -3,6 +3,6 @@
 
 #include <stdbool.h>
 
-int create(bool interactive, char *path, char *args[]);
+int create(char *path, char *args[]);
 
 #endif //SIMPCON_FORK_H
