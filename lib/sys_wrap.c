@@ -29,15 +29,12 @@ int s_write(int fd, void *buf, size_t len, bool exit_on_error) {
     return result;
 }
 
-int s_pivot_root(const char *new_root, const char *old_root, bool exit_on_error) {
-    int result = syscall(SYS_pivot_root, new_root, old_root);
+long s_pivot_root(const char *new_root, const char *old_root, bool exit_on_error) {
+    long result = syscall(SYS_pivot_root, new_root, old_root);
     CHECK_AND_EXIT_IF_REQUIRED(exit_on_error, result == -1, "pivot_root");
     return result;
 }
 
-/**
- * Usually used for debugging purposes.
- */
 __attribute__((unused)) int s_ls(const char *dir, bool exit_on_error) {
     struct dirent *d;
     DIR *dh = opendir(dir);
@@ -52,5 +49,14 @@ __attribute__((unused)) int s_ls(const char *dir, bool exit_on_error) {
 int s_umount(const char *path, int flags, bool exit_on_error) {
     int result = umount2(path, flags);
     CHECK_AND_EXIT_IF_REQUIRED(exit_on_error, result == -1, "umount2");
+    return result;
+}
+
+int s_system(const char *cmd, const char *debug_msg, bool exit_on_error) {
+    int result = system(cmd);
+    if (result) {
+        if (debug_msg) fprintf(stderr, debug_msg);
+        if (exit_on_error) exit(1);
+    }
     return result;
 }

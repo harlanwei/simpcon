@@ -9,6 +9,7 @@
 #include <sys/mount.h>
 #include <sys/wait.h>
 
+#include "../include/cgroup.h"
 #include "../include/errno.h"
 #include "../include/fork.h"
 #include "../include/id.h"
@@ -18,6 +19,7 @@
 #define INIT_STACK_SIZE 4096
 
 struct init_args {
+    int id;
     char *path;
     char **args;
     uid_t euid;
@@ -36,7 +38,7 @@ static int spawn(char *path, char *args[]) {
     return -1;
 }
 
-static void chuser(uid_t from_uid, uid_t to_uid, uid_t from_gid, uid_t to_gid) {
+static void chuser(uid_t to_uid, uid_t to_gid) {
     int fd;
     char *buf = malloc(BUF_SIZE);
 
@@ -44,12 +46,12 @@ static void chuser(uid_t from_uid, uid_t to_uid, uid_t from_gid, uid_t to_gid) {
     s_write(fd, "deny", 4, true);
     close(fd);
 
-    sprintf(buf, "%d %d 1\n", from_uid, to_uid);
+    sprintf(buf, "%d %d 1\n", 0, to_uid);
     fd = s_open("/proc/self/uid_map", O_WRONLY, true);
     s_write(fd, buf, strlen(buf), true);
     close(fd);
 
-    sprintf(buf, "%d %d 1\n", from_gid, to_gid);
+    sprintf(buf, "%d %d 1\n", 0, to_gid);
     fd = s_open("/proc/self/gid_map", O_WRONLY, true);
     s_write(fd, buf, strlen(buf), true);
     close(fd);
@@ -62,19 +64,20 @@ static int init_container(void *args) {
     mount("/home/vian/simpcon/fkroot", "/home/vian/simpcon/fkroot", NULL, MS_BIND, NULL);
     chdir("/home/vian/simpcon/fkroot");
     s_pivot_root("/home/vian/simpcon/fkroot", "/home/vian/simpcon/fkroot/tmp/oldroot", true);
-    s_umount("/tmp/oldroot", MNT_DETACH, true);
     mount("/proc", "/proc", "proc", 0, NULL);
-    chuser(0, _args->euid, 0, _args->egid);
-    setenv("PS1", "\\u, \\w: ", true);
+    s_umount("/tmp/oldroot", MNT_DETACH, true);
+    chuser(_args->euid, _args->egid);
+    setenv("PS1", "\\w \\$ ", true);
     spawn(_args->path, _args->args);
-
     return 0;
 }
 
-int create(char *path, char *args[]) {
-    int id, namespaces;
+int create(int add_namespaces, char *path, char *args[]) {
+    char *buf;
+    int id, namespaces, result;
     pid_t child_pid;
     struct init_args init_container_args = {
+            .id = id,
             .euid = geteuid(),
             .egid = getegid(),
             .path = path,
@@ -85,7 +88,9 @@ int create(char *path, char *args[]) {
     if (id < 0)
         return ERR_ID_ALLOCATION_FAILED;
 
-    namespaces = CLONE_NEWPID | CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWNS;
+    cgroup_create(id, true);
+
+    namespaces = add_namespaces | CLONE_NEWPID | CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWNS;
     child_pid = clone(
             init_container,
             init_stack + INIT_STACK_SIZE,
@@ -97,6 +102,14 @@ int create(char *path, char *args[]) {
         exit(1);
     }
 
+    register_container(id, child_pid);
+    cgroup_attach(id);
     waitpid(child_pid, NULL, 0);
-    return child_pid;
+    cgroup_destroy(id);
+
+    return id;
+}
+
+int create_default(char *path, char *args[]) {
+    return create(0, path, args);
 }
