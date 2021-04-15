@@ -46,12 +46,12 @@ static void chuser(uid_t to_uid, uid_t to_gid) {
     s_write(fd, "deny", 4, true);
     close(fd);
 
-    sprintf(buf, "%d %d 1\n", 0, to_uid);
+    snprintf(buf, BUF_SIZE, "%d %d 1\n", 0, to_uid);
     fd = s_open("/proc/self/uid_map", O_WRONLY, true);
     s_write(fd, buf, strlen(buf), true);
     close(fd);
 
-    sprintf(buf, "%d %d 1\n", 0, to_gid);
+    snprintf(buf, BUF_SIZE, "%d %d 1\n", 0, to_gid);
     fd = s_open("/proc/self/gid_map", O_WRONLY, true);
     s_write(fd, buf, strlen(buf), true);
     close(fd);
