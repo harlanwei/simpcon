@@ -10,13 +10,13 @@
 #include <sys/wait.h>
 
 #include "../include/cgroup.h"
-#include "../include/errno.h"
 #include "../include/fork.h"
 #include "../include/id.h"
 #include "../include/sys_wrap.h"
 
 #define BUF_SIZE 128
 #define INIT_STACK_SIZE 4096
+#define FKROOT_ENV_NAME "simpcon_fkroot"
 
 struct init_args {
     int id;
@@ -59,20 +59,46 @@ static void chuser(uid_t to_uid, uid_t to_gid) {
     free(buf);
 }
 
+static const char *get_fkroot_path() {
+    const char *path_rootfs = getenv(FKROOT_ENV_NAME);
+
+    if (!path_rootfs) {
+        fprintf(stderr, "Error: rootfs path is not defined in the environment. Set `%s` to define it.\n",
+                FKROOT_ENV_NAME);
+        exit(1);
+    }
+
+    return path_rootfs;
+}
+
+static void get_old_root(const char *fkroot, char *buf, int buf_size) {
+    if (!buf)
+        exit(1);
+
+    snprintf(buf, buf_size, "%s/tmp/oldroot", fkroot);
+}
+
 static int init_container(void *args) {
+    char *old_root_path = malloc(BUF_SIZE);
+    const char *fkroot_path = get_fkroot_path();
     struct init_args *_args = (struct init_args *) args;
-    mount("/home/vian/simpcon/fkroot", "/home/vian/simpcon/fkroot", NULL, MS_BIND, NULL);
-    chdir("/home/vian/simpcon/fkroot");
-    s_pivot_root("/home/vian/simpcon/fkroot", "/home/vian/simpcon/fkroot/tmp/oldroot", true);
+
+    get_old_root(fkroot_path, old_root_path, BUF_SIZE);
+    mount(fkroot_path, fkroot_path, NULL, MS_BIND, NULL);
+    chdir(fkroot_path);
+    s_pivot_root(fkroot_path, old_root_path, true);
     mount("/proc", "/proc", "proc", 0, NULL);
     s_umount("/tmp/oldroot", MNT_DETACH, true);
+
     chuser(_args->euid, _args->egid);
+
     setenv("PS1", "\\w \\$ ", true);
     spawn(_args->path, _args->args);
+
     return 0;
 }
 
-int create(int add_namespaces, char *path, char *args[]) {
+void create(int add_namespaces, char *path, char *args[]) {
     char *buf;
     int id, namespaces, result;
     pid_t child_pid;
@@ -81,12 +107,14 @@ int create(int add_namespaces, char *path, char *args[]) {
             .euid = geteuid(),
             .egid = getegid(),
             .path = path,
-            .args = args
+            .args = args,
     };
 
     id = get_id();
-    if (id < 0)
-        return ERR_ID_ALLOCATION_FAILED;
+    if (id < 0) {
+        fprintf(stderr, "Error: reached the maximum number of active containers.\n");
+        return;
+    }
 
     cgroup_create(id, true);
 
@@ -105,11 +133,9 @@ int create(int add_namespaces, char *path, char *args[]) {
     register_container(id, child_pid);
     cgroup_attach(id);
     waitpid(child_pid, NULL, 0);
-    cgroup_destroy(id);
-
-    return id;
+    cgroup_detach(id);
 }
 
-int create_default(char *path, char *args[]) {
-    return create(0, path, args);
+void create_default(char *path, char *args[]) {
+    create(0, path, args);
 }

@@ -3,8 +3,8 @@
 
 #include <stdbool.h>
 
-int create(int namespaces, char *path, char *args[]);
+void create(int namespaces, char *path, char *args[]);
 
-int create_default(char *path, char *args[]);
+void create_default(char *path, char *args[]);
 
 #endif //SIMPCON_FORK_H
