@@ -89,6 +89,7 @@ static int init_container(void *args) {
     s_pivot_root(fkroot_path, old_root_path, true);
     mount("/proc", "/proc", "proc", 0, NULL);
     s_umount("/tmp/oldroot", MNT_DETACH, true);
+    free(old_root_path);
 
     chuser(_args->euid, _args->egid);
 
@@ -127,7 +128,7 @@ void create(int add_namespaces, char *path, char *args[]) {
     );
     if (child_pid == -1) {
         fprintf(stderr, "Failed to `clone`\n");
-        exit(1);
+        return;
     }
 
     register_container(id, child_pid);
