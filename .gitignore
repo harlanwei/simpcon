@@ -125,3 +125,4 @@ dkms.conf
 fkroot
 
 thesis/
+.ipynb_checkpoints/
