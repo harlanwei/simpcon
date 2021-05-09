@@ -55,7 +55,7 @@ int s_umount(const char *path, int flags, bool exit_on_error) {
 int s_system(const char *cmd, const char *debug_msg, bool exit_on_error) {
     int result = system(cmd);
     if (result) {
-        if (debug_msg) fprintf(stderr, debug_msg);
+        if (debug_msg) fprintf(stderr, "%s", debug_msg);
         if (exit_on_error) exit(1);
     }
     return result;

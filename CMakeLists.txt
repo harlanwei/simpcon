@@ -4,4 +4,4 @@ project(simpcon C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(simpcon main.c include/id.h lib/id.c lib/fork.c include/errno.h include/fork.h lib/sys_wrap.c include/sys_wrap.h lib/cgroup.c include/cgroup.h)
+add_executable(simpcon main.c lib/id.c lib/fork.c lib/sys_wrap.c lib/cgroup.c)
