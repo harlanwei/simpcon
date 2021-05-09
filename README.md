@@ -15,7 +15,7 @@ To build Simpcon, run the following commands under project root:
 
 ## Usage
 
-Simpcon is a single executable program. To use Simpcon, run it as root, provide the path to root image with the environment variable `simpcon_fkroot` and provide the command you wish to execute. For example:
+Simpcon is a single executable program. To use Simpcon, run it as root, provide the path to root image with the environment variable `simpcon_fkroot` and manifest the command you wish to execute. For example:
 
 ```sh
 sudo simpcon_fkroot="/home/user/fkroot" ./simpcon /bin/sh
